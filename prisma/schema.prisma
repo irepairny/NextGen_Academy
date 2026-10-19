@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String        @id @default(cuid())
+  username     String        @unique
+  passwordHash String
+  fullName     String
+  role         String        @default("STUDENT")
+  createdAt    DateTime      @default(now())
+  sessions     Session[]
+  enrollments  Enrollment[]
+  invoices     Invoice[]
+  payments     Payment[]
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Course {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  title       String
+  description String
+  priceCents  Int
+  active      Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  enrollments Enrollment[]
+}
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  progress  Int      @default(0)
+  status    String   @default("ENROLLED")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  @@unique([userId, courseId])
+  @@index([userId])
+}
+
+model Invoice {
+  id             String    @id @default(cuid())
+  userId         String
+  description    String
+  totalCents     Int
+  paidCents      Int       @default(0)
+  status         String    @default("OPEN")
+  createdAt      DateTime  @default(now())
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments       Payment[]
+  @@index([userId])
+}
+
+model Payment {
+  id                String   @id @default(cuid())
+  userId            String
+  invoiceId          String
+  provider           String   @default("PAYPAL")
+  providerOrderId    String   @unique
+  amountCents        Int
+  currency           String   @default("USD")
+  status             String   @default("CREATED")
+  captureId          String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoice            Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([invoiceId])
+}
